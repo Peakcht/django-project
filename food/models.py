@@ -43,12 +43,13 @@ class Order(models.Model):
     table = models.ForeignKey(Table, related_name='orders', on_delete=models.CASCADE)
     num_customers = models.PositiveIntegerField(default=1)
     selected_package = models.CharField(max_length=255, blank=True, null=True)
-    
+    order_number = models.PositiveIntegerField(unique=True)
+
     class Meta:
         ordering = ['-created_time']
 
     def __str__(self):
-        return f"Order {self.order_id} for Table {self.table.table_number} ({self.status})"
+        return f"Order No: {self.order_number} Order:ID {self.order_id} for Table {self.table.table_number} ({self.status})"
     
     @property
     def end_time(self):
@@ -65,6 +66,12 @@ class Order(models.Model):
             # Free the table
             self.table.is_occupied = False
             self.table.save()
+
+    def save(self, *args, **kwargs):
+        if not self.order_number:
+            last_number = Order.objects.aggregate(models.Max('order_number'))['order_number__max'] or 0
+            self.order_number = last_number + 1
+        super().save(*args, **kwargs)
 
 
 class OrderItem(models.Model):
@@ -119,6 +126,13 @@ class Invoice(models.Model):
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default=PENDING)
     selected_package = models.CharField(max_length=255, blank=True, null=True)  # Added field
     transaction_image = models.ImageField(upload_to='transaction_slips/', blank=True, null=True)  # <-- add this
+    invoice_number = models.PositiveIntegerField(unique=True)
 
     def __str__(self):
-        return f"Invoice ID: {self.invoice_id} for Order {self.order.order_id} ({self.status})"
+        return f"Invoice No:{self.invoice_number} Invoice ID:{self.invoice_id} for Order No:{self.order.order_number} Order ID:{self.order.order_id} ({self.status})"
+    
+    def save(self, *args, **kwargs):
+        if not self.invoice_number:
+            last_number = Invoice.objects.aggregate(models.Max('invoice_number'))['invoice_number__max'] or 0
+            self.invoice_number = last_number + 1
+        super().save(*args, **kwargs)

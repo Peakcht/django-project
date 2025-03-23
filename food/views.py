@@ -216,7 +216,44 @@ def order_page(request, order_id):
         'selected_package': selected_package,
     })
 
+#Try for Update All
 def waiter_order(request):
+    # Retrieve orders where at least one item is 'Ready to Serve'
+    orders = Order.objects.prefetch_related(
+        Prefetch(
+            'items',
+            queryset=OrderItem.objects.filter(status='Ready to Serve')
+        )
+    ).filter(
+        items__status='Ready to Serve'
+    ).distinct().order_by('table__table_number')
+
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        order = get_object_or_404(Order, order_id=order_id)
+
+        if 'bulk_finish' in request.POST:
+            # Bulk finish all 'Ready to Serve' items
+            items = order.items.filter(status='Ready to Serve')
+            for item in items:
+                item.status = 'Finished'
+                item.save()
+        else:
+            # Individual finish
+            item_id = request.POST.get('item_id')
+            new_status = request.POST.get('new_status')
+            order_item = get_object_or_404(OrderItem, id=item_id, order=order)
+
+            if order_item.status == 'Ready to Serve' and new_status == 'Finished':
+                order_item.status = new_status
+                order_item.save()
+
+        return redirect('waiter_order')
+
+    return render(request, 'waiter_order.html', {'orders': orders})
+
+# OG Update One-by-One
+#def waiter_order(request):
     # Retrieve orders where at least one item is 'Ready to Serve'
     orders = Order.objects.prefetch_related(
         Prefetch(
@@ -328,18 +365,33 @@ def kitchen_order(request):
             item_id = request.POST.get('item_id')
             order_item = get_object_or_404(OrderItem, id=item_id, order__order_id=order_id)
 
-            # Kitchen can update statuses within the workflow, including cancelling an item
             if order_item.status in ['Pending', 'Cooking'] and new_status in ['Cooking', 'Ready to Serve', 'Cancelled']:
                 order_item.status = new_status
                 order_item.save()
 
-            # Check if all items in the order are either 'Ready to Serve' or 'Cancelled'
             order = order_item.order
             if not order.items.exclude(status__in=['Ready to Serve', 'Cancelled']).exists():
                 order.status = "Pending"
                 order.save()
 
+        elif 'delete_item_id' in request.POST:
+            delete_item_id = request.POST.get('delete_item_id')
+            order_item = get_object_or_404(OrderItem, id=delete_item_id, order__order_id=order_id)
+            if order_item.status == 'Cancelled':
+                order_item.delete()
+
+        else:
+            order = get_object_or_404(Order, order_id=order_id)
+            for item in order.items.filter(status__in=['Pending', 'Cooking']):
+                item.status = new_status
+                item.save()
+
+            if not order.items.exclude(status__in=['Ready to Serve', 'Cancelled']).exists():
+                order.status = "Pending"
+                order.save()
+
         return redirect('kitchen_order')
+
 
     return render(request, 'kitchen_order.html', {'orders': orders})
 
@@ -465,7 +517,7 @@ def checkout(request, order_id):
         order.save()
 
         # Redirect after successful payment
-        return redirect('homepage')
+        return redirect('checkout_list')
 
     return render(request, 'checkout.html', {
         'order': order,
@@ -530,6 +582,10 @@ def submit_receipt(request):
 def receipt_view(request, invoice_id):
     invoice = get_object_or_404(Invoice, invoice_id=invoice_id)
     return render(request, 'receipt_view.html', {'invoice': invoice})
+
+def invoice_list_view(request):
+    invoices = Invoice.objects.all().order_by('-generated_at')  # Sort newest first
+    return render(request, 'invoice_list.html', {'invoices': invoices})
 
 def dashboard(request): 
     """ Dashboard view with total sales (default) and date-filtered sales """

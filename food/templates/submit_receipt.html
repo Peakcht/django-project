@@ -2,8 +2,8 @@
 {% block title %}Submit Receipt{% endblock %}
 {% block content %}
 <div class="container mt-4">
-    <h3>Submit Transaction Slip</h3>
-
+    <h2>Submit Transaction Slip</h2>
+    <br>
     <!-- Search Bar -->
     <form method="GET" class="form-inline mb-3">
         <input type="text" name="search" class="form-control mr-2" placeholder="Search by Invoice ID or Order ID" value="{{ request.GET.search }}">
@@ -19,7 +19,7 @@
             <select class="form-control" id="order_id" name="order_id" required>
                 {% for invoice in invoices %}
                     <option value="{{ invoice.order.order_id }}">
-                        Order: {{ invoice.order.order_id }} — Invoice: {{ invoice.invoice_id }}
+                        Order #{{ invoice.order.order_number }} — Invoice #{{ invoice.invoice_number }}
                     </option>
                 {% endfor %}
             </select>
@@ -30,7 +30,7 @@
             <input type="file" class="form-control-file" name="transaction_image" accept="image/*" required>
         </div>
 
-        <button type="submit" class="btn btn-success">Submit Slip</button>
+        <button type="submit" class="btn btn-outline-success">Add Slip</button>
     </form>
 </div>
 {% endblock %}

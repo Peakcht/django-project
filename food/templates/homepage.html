@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-
+<br>
 <div class="container">
     <!-- Section: Generate QR Code (Now Includes Package Selection) -->
     <section>
@@ -43,11 +43,12 @@
             <br>
             <br>
             <div class="btn-group" role="group">
-                <a href="{% url 'kitchen_order' %}" class="btn btn-outline-primary">Kitchen</a>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-primary">Dashboard</a>
+                <a href="{% url 'kitchen_order' %}" class="btn btn-outline-secondary">Kitchen</a>
                 <a href="{% url 'waiter_order' %}" class="btn btn-outline-secondary">Waiter</a>
-                <a href="{% url 'checkout' %}" class="btn btn-outline-success">Checkout</a>
-                <a href="{% url 'dashboard' %}" class="btn btn-outline-dark">Dashboard</a>
-                <a href="{% url 'submit_receipt' %}" class="btn btn-outline-dark">Submit Payment Slip</a>
+                <a href="{% url 'checkout_list' %}" class="btn btn-outline-success">Checkout</a>
+                <a href="{% url 'invoice_list' %}" class="btn btn-outline-success">Invoice List</a>
+                <a href="{% url 'submit_receipt' %}" class="btn btn-outline-success">Submit Payment Slip</a>
             </div>
         </form>
     </section>

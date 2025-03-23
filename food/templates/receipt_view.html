@@ -39,6 +39,7 @@
             <td>{{ invoice.generated_at }}</td>
         </tr>
     </table>
-    <a href="{% url 'submit_receipt' %}" class="btn btn-secondary">Back</a>
+    <a href="javascript:history.back()" class="btn btn-secondary">Back</a>
+    <!--<a href="{% url 'invoice_list' %}" class="btn btn-secondary">Back</a>-->
 </div>
 {% endblock %}

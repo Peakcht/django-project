@@ -9,7 +9,7 @@
     <div class="card mb-4 shadow-sm">
         <div class="card-body">
             <h5 class="card-title">🪑 Table {{ order.table.table_number }}</h5>
-            <h6 class="text-muted mb-3">Order ID: {{ order.id }}</h6>
+            <h6 class="text-muted mb-3">Order ID: {{ order.order_number }}</h6>
 
             <ul class="list-group mb-3">
                 {% for item in order.items.all %}
@@ -18,18 +18,28 @@
                         <strong>{{ item.dish.name }}</strong> × {{ item.quantity }}
                         <span class="badge bg-secondary ms-2">{{ item.status }}</span>
                     </div>
-                    <form method="post" class="d-flex gap-2 align-items-center">
+                    <!--<form method="post" class="mt-2 d-flex gap-2 align-items-center">
                         {% csrf_token %}
                         <input type="hidden" name="order_id" value="{{ order.order_id }}">
-                        <input type="hidden" name="item_id" value="{{ item.id }}">
-                        <button type="submit" name="new_status" value="Finished" class="btn btn-sm btn-success"
-                            {% if item.status == 'Finished' %}disabled{% endif %}>
-                            ✅ Mark as Finished
+                        <input type="hidden" name="bulk_finish" value="true">
+                        <button type="submit" class="btn btn-sm btn-success">
+                            ✅ Mark All as Finished
                         </button>
-                    </form>
+                    </form>-->
                 </li>
                 {% endfor %}
             </ul>
+            <!-- 🔽 New bulk button -->
+            <div class="d-flex justify-content-end">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="order_id" value="{{ order.order_id }}">
+                    <input type="hidden" name="bulk_finish" value="true">
+                    <button type="submit" class="btn btn-success btn-md">
+                        ✅ Mark All as Finished
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
     {% endfor %}

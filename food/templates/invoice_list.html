@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Invoice List{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h3>Invoice List</h3>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Invoice ID</th>
+                <th>Order ID</th>
+                <th>Amount Paid</th>
+                <th>Status</th>
+                <th>Generated At</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invoice in invoices %}
+            <tr>
+                <td>{{ invoice.invoice_id }}</td>
+                <td>{{ invoice.order.order_id }}</td>
+                <td>{{ invoice.amount_paid }} ฿</td>
+                <td>{{ invoice.status }}</td>
+                <td>{{ invoice.generated_at }}</td>
+                <td>
+                    <a href="{% url 'receipt_view' invoice.invoice_id %}" class="btn btn-sm btn-primary">View Receipt</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

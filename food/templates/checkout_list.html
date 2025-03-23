@@ -9,6 +9,7 @@
         <table class="table table-bordered table-hover align-middle shadow-sm bg-white">
             <thead class="thead-light">
                 <tr>
+                    <th>Order ID</th>
                     <th>Table Number</th>
                     <th>Number of Customers</th>
                     <th>Package</th>
@@ -18,6 +19,7 @@
             <tbody>
                 {% for order in orders %}
                 <tr>
+                    <td>{{ order.order_number }}</td>
                     <td>{{ order.table.table_number }}</td>
                     <td>{{ order.num_customers }}</td>
                     <td>{{ order.total_price }}</td>

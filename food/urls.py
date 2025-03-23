@@ -11,11 +11,12 @@ urlpatterns = [
     path('change_package/<str:order_id>/', views.change_package, name='change_package'),
     path('kitchen_order/', views.kitchen_order, name='kitchen_order'),
     path('waiter_order/', views.waiter_order, name='waiter_order'),
-    path('checkout_list/', views.checkout_list, name='checkout'), #add
+    path('checkout_list/', views.checkout_list, name='checkout_list'), #add
     path('checkout/<str:order_id>/', views.checkout, name='checkout'),
-    path('receipt/<str:order_id>/', views.receipt, name='receipt'), #old receipt use to view receipt
-    path('submit_receipt/', views.submit_receipt, name='submit_receipt'),
+    path('receipt/<str:order_id>/', views.receipt, name='receipt'), #checkout receipt
+    path('submit_receipt/', views.submit_receipt, name='submit_receipt'),#submit transaction
     path('receipt_view/<uuid:invoice_id>/', views.receipt_view, name='receipt_view'), #use to view submit photo receipt
+    path('invoice_list/', views.invoice_list_view, name='invoice_list'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('session_expired/', views.session_expired_page, name='session_expired'),
     #path('staff/', views.staff, name='dashboard-staff'),
@@ -24,3 +25,4 @@ urlpatterns = [
 ]
 if settings.DEBUG:  # Serve media files only in debug mode
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
