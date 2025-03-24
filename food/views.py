@@ -126,7 +126,9 @@ def homepage(request):
                 group_order_id = str(uuid.uuid4())
                 start_time = datetime.now()
                 end_time = start_time + timedelta(hours=2)
-                qr_image_path = generate_qr_image(group_order_id)
+
+                # ✅ Pass request into QR generator
+                qr_image_path = generate_qr_image(request, group_order_id)
 
                 Order.objects.create(
                     table=table_to_assign,
@@ -152,18 +154,18 @@ def homepage(request):
     })
 
 
-def generate_qr_image(group_order_id):
-    # Generate the order page URL dynamically
-    order_page_url = f"{settings.SITE_URL}{reverse('order_page', args=[group_order_id])}"
+def generate_qr_image(request, group_order_id):
+    # Build the full URL using the real host from the request
+    relative_url = reverse('order_page', args=[group_order_id])
+    order_page_url = request.build_absolute_uri(relative_url)
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
-    qr.add_data(order_page_url)  # Embed the URL
+    qr.add_data(order_page_url)
     qr.make(fit=True)
 
     qr_image_relative_path = os.path.join('qrcodes', f'group_order_{group_order_id}.png')
     qr_image_path = os.path.join(settings.MEDIA_ROOT, qr_image_relative_path)
-    
-    # Ensure the qrcodes directory exists; create it if it doesn't
+
     os.makedirs(os.path.dirname(qr_image_path), exist_ok=True)
     qr_image = qr.make_image(fill_color="black", back_color="white")
     qr_image.save(qr_image_path)
@@ -174,20 +176,17 @@ def session_expired_page(request):
     return render(request, 'session_expired.html')
 
 def order_page(request, order_id):
-    # Retrieve the selected package from the session
-    selected_package = request.session.get('selected_package', None)
-    if not selected_package:
-        return redirect('homepage')
-
     # Fetch the existing order
     order = get_object_or_404(Order, order_id=order_id)
 
     # Handle session expiration and finished status
     if not order.is_session_active() or order.status == Order.FINISHED:
-        order.expire_session()  # Ensure the session is marked expired
+        order.expire_session()
         return redirect('session_expired')
 
-    # Retrieve dishes in the selected package
+    # Use the selected_package from the Order, not the session
+    selected_package = order.selected_package
+
     dishes = Dish.objects.filter(category=selected_package)
 
     return render(request, 'order_page.html', {
@@ -195,25 +194,6 @@ def order_page(request, order_id):
         'dishes': dishes,
         'selected_package': selected_package,
         'end_time': order.end_time,
-    })
-
-
-#def order_page(request, order_id):
-    # Retrieve the selected package from the session
-    selected_package = request.session.get('selected_package', None)
-    if not selected_package:
-        return redirect('homepage')
-
-    # Fetch the existing order
-    order = get_object_or_404(Order, order_id=order_id)
-
-    # Retrieve dishes in the selected package
-    dishes = Dish.objects.filter(category=selected_package)
-
-    return render(request, 'order_page.html', {
-        'order': order,
-        'dishes': dishes,
-        'selected_package': selected_package,
     })
 
 #Try for Update All
