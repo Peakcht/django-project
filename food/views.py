@@ -38,61 +38,6 @@ def order(request):
         'dishes': dishes
     })
 
-#def homepage(request):
-    error = None
-    qr_image_path = None
-    group_order_id = None
-    table_to_assign = None
-    start_time = None
-    end_time = None
-
-    selected_package = request.session.get('selected_package', None)
-
-    if request.method == 'POST':
-        if 'package' in request.POST:
-            package_price = request.POST.get('package')
-            request.session['selected_package'] = package_price
-            return redirect('homepage')
-
-        elif 'num_customers' in request.POST:
-            num_customers = request.POST.get('num_customers')
-            if not num_customers or not num_customers.isdigit():
-                error = "Valid number of customers is required."
-            else:
-                num_customers = int(num_customers)
-                available_tables = Table.objects.filter(is_occupied=False)
-                for table in available_tables:
-                    if table.capacity >= num_customers:
-                        table_to_assign = table
-                        break
-
-                if table_to_assign:
-                    table_to_assign.is_occupied = True
-                    table_to_assign.save()
-                    group_order_id = str(uuid.uuid4())
-                    start_time = datetime.now()
-                    end_time = start_time + timedelta(hours=2)
-                    qr_image_path = generate_qr_image(group_order_id)
-                    Order.objects.create(
-                        table=table_to_assign,
-                        order_id=group_order_id,
-                        total_price=int(selected_package),
-                        num_customers=num_customers,
-                        selected_package=selected_package,
-                    )
-                else:
-                    error = "No table available for the specified number of customers."
-
-    return render(request, 'homepage.html', {
-    'error': error,
-    'selected_package': selected_package,
-    'qr_image_path': qr_image_path,
-    'group_order_id': group_order_id,
-    'table': table_to_assign,  # Pass the assigned table object
-    'start_time': start_time,
-    'end_time': end_time,
-    })
-
 def homepage(request):
     error = None
     qr_image_path = None
