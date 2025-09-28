@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-0c_a$_^q6ua)3sg7m6i98y7$&%o1tbw+@@w5ngcbxh!2%e(tkl
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ['*']#'shabucho.ddns.net']
+
 
 
 # Application definition
@@ -108,7 +109,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Bangkok'
 
 USE_I18N = True
 
@@ -126,4 +127,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+<<<<<<< HEAD
 #SITE_URL = 'http://127.0.0.1:8000'
+=======
+#SITE_URL = '54.169.55.198'
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
