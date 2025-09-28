@@ -24,6 +24,10 @@ class Dish(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name = "Menu"             # Singular label
+        verbose_name_plural = "Menu"     # Plural label
+
 
 class Order(models.Model):
     PENDING = 'Pending'
@@ -49,7 +53,7 @@ class Order(models.Model):
         ordering = ['-created_time']
 
     def __str__(self):
-        return f"Order No: {self.order_number} Order:ID {self.order_id} for Table {self.table.table_number} ({self.status})"
+        return f"Order ID: {self.order_number} for Table {self.table.table_number} ({self.status})"
     
     @property
     def end_time(self):
@@ -91,12 +95,16 @@ class OrderItem(models.Model):
     dish = models.ForeignKey(Dish, related_name='order_items', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     additional_option = models.TextField(blank=True)
-    status = models.CharField(max_length=20, choices=ITEM_STATUS_CHOICES, default=PENDING)
+    status = models.CharField(max_length=20, choices=ITEM_STATUS_CHOICES, default=COOKING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.quantity} x {self.dish.name} (Options: {self.additional_option})"
+        return f"{self.quantity} x {self.dish.name} (Options: {self.status})"
+
+    class Meta:
+        verbose_name = "Ordered Item"             # Singular label
+        verbose_name_plural = "Ordered Items"     # Plural label
 
 
 class Invoice(models.Model):
@@ -127,10 +135,15 @@ class Invoice(models.Model):
     selected_package = models.CharField(max_length=255, blank=True, null=True)  # Added field
     transaction_image = models.ImageField(upload_to='transaction_slips/', blank=True, null=True)  # <-- add this
     invoice_number = models.PositiveIntegerField(unique=True)
+    reference_code = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
-        return f"Invoice No:{self.invoice_number} Invoice ID:{self.invoice_id} for Order No:{self.order.order_number} Order ID:{self.order.order_id} ({self.status})"
+        return f"Receipt ID:{self.invoice_number} for Order ID:{self.order.order_number} ({self.status})"
     
+    class Meta:
+        verbose_name = "Receipt"             # Singular label
+        verbose_name_plural = "Receipts"     # Plural label
+
     def save(self, *args, **kwargs):
         if not self.invoice_number:
             last_number = Invoice.objects.aggregate(models.Max('invoice_number'))['invoice_number__max'] or 0
