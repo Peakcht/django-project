@@ -5,5 +5,3 @@ whitenoise==6.6.0 #must be in requirements.txt
 gunicorn==21.2.0 #must be in requirements.txt
 qrcode==7.4.2
 Pillow==9.5.0
-sqlparse==0.4.4
-packaging==25.0 
