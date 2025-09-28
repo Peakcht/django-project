@@ -19,13 +19,18 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         {% load static %}
-        <a class="navbar-brand" href="{% url 'homepage' %}"><img src="{% static 'img/icon.png' %}" alt="Icon Image" style="width: 100px; height: 100px;"></a>
-        
+	{% if hide_home %}
+        <a class="navbar-brand" href="#"><img src="{% static 'img/icon.png' %}" alt="Icon Image" style="width: 80px; height: 80px;"></a>
+        {% else %}
+        <a class="navbar-brand" href="{% url 'homepage' %}"><img src="{% static 'img/icon.png' %}" alt="Icon Image" style="width: 80px; height: 80px;"></a>
+        {% endif %}
         <div class="collapse navbar-collapse" id="navbarTogglerDemo03">
           <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+            {% if not hide_home %}
             <li class="nav-item active">
               <a class="nav-link" href="{% url 'homepage' %}">Home <span class="sr-only">(current)</span></a>
             </li>
+            {% endif %}
             <!--<li class="nav-item">
               <a class="nav-link" href="#">Order</a>
             </li>
@@ -33,10 +38,10 @@
               <a class="nav-link" href="#">Disabled</a>
             </li>-->
           </ul>
-          <form class="form-inline my-2 my-lg-0">
+          <!--<form class="form-inline my-2 my-lg-0">
             <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
             <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
-          </form>
+          </form>-->
           <!--<button type="button" class="btn btn-secondary mx-2" id="popcart" data-container="body" data-html="true" data-toggle="popover" title="My Cart" data-placement="bottom" data-content="Bottom popover">
             Cart(<span id="cart-count">0</span>)
           </button>-->

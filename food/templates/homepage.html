@@ -47,7 +47,7 @@
                 <a href="{% url 'kitchen_order' %}" class="btn btn-outline-secondary">Kitchen</a>
                 <a href="{% url 'waiter_order' %}" class="btn btn-outline-secondary">Waiter</a>
                 <a href="{% url 'checkout_list' %}" class="btn btn-outline-success">Checkout</a>
-                <a href="{% url 'invoice_list' %}" class="btn btn-outline-success">Invoice List</a>
+                <a href="{% url 'invoice_list' %}" class="btn btn-outline-success">Receipt List</a>
                 <a href="{% url 'submit_receipt' %}" class="btn btn-outline-success">Submit Payment Slip</a>
             </div>
         </form>
@@ -62,10 +62,10 @@
                 <img src="{{ qr_image_path }}" alt="QR Code">
                 <p><strong>Package:</strong> {{ selected_package }}</p>
                 <p><strong>Table:</strong> {{ table.table_number }}</p>
-                <p><strong>Number of Customers:</strong> {{ table.capacity }}</p>
+                <p><strong>Number of Customers:</strong> {{ num_customers }}</p>
                 <p><strong>Start Time:</strong> {{ start_time|date:"H:i" }}</p>
                 <p><strong>End Time:</strong> {{ end_time|date:"H:i" }}</p>
-                <p><strong>Group Order ID:</strong> {{ group_order_id }}</p>
+                <p><strong>Order ID:</strong> {{ order_number }}</p>
             </div>
             <button class="btn btn-secondary" onclick="closePopup()">Close</button>
             <button class="btn btn-success" onclick="printReceipt()">Print</button>

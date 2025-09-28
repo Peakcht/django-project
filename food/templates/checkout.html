@@ -2,76 +2,75 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
             margin: 0;
-            padding: 0;
-            background-color: #f4f4f9;
+            padding: 40px;
             color: #333;
         }
 
-        h2 {
-            text-align: center;
-            margin-top: 20px;
-            color: #444;
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
         }
 
-        p, label {
-            margin: 10px 0;
-            font-size: 16px;
+        h2, h5 {
+            text-align: center;
+            margin-bottom: 20px;
         }
 
         table {
-            width: 20%;
-            margin: 20px auto;
+            width: 100%;
             border-collapse: collapse;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
         }
 
         th, td {
-            padding: 10px;
+            padding: 12px;
             text-align: left;
-            border: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
         }
 
         th {
-            background-color: #f7f7f7;
-            font-weight: bold;
+            background-color: #f0f0f0;
         }
 
         form {
-            width: 15%;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
         }
 
         select, button {
-            display: block;
             width: 100%;
-            margin-top: 10px;
             padding: 10px;
+            margin-top: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
             font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
         }
 
         button {
-            background-color: #007bff;
-            color: #fff;
+            background-color: #28a745;
+            color: white;
             border: none;
+            margin-top: 20px;
             cursor: pointer;
         }
 
         button:hover {
-            background-color: #0056b3;
+            background-color: #218838;
         }
 
         #qr-modal {
@@ -81,17 +80,16 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             z-index: 9999;
             text-align: center;
         }
 
         #qr-modal img {
-            width: 200px;
-            height: 200px;
-            margin: 20px 0;
+            max-width: 250px;
+            margin: 20px auto;
         }
 
         #modal-overlay {
@@ -99,40 +97,48 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 9998;
+        }
+
+        .centered-text {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
+<div class="container">
     <h2>Checkout</h2>
+    <p class="centered-text"><strong>Order ID:</strong> {{ order.order_number }}</p>
+    <p class="centered-text"><strong>Date:</strong> {{ order.created_time|date:"d-m-Y H:i:s" }}</p>
+    <p class="centered-text"><strong>Table:</strong> {{ order.table }}</p>
+    <p class="centered-text"><strong>Price Per Person:</strong> {{ order.total_price }}</p>
+    <p class="centered-text"><strong>Number of Customers:</strong> {{ order.num_customers }}</p>
+    <h5>Order Summary</h5>
 
-    <!-- Grouped Order Summary -->
-    <strong><p style="text-align: center;">Order ID: {{ order.id }}</p></strong>
-    <p style="text-align: center;">Date: {{ order.created_time|date:"d-m-Y H:i:s" }}</p>
-    <h5 style="text-align: center;">Order Summary</h5>
     <table>
         <thead>
-            <tr>
-                <th>Dish Name</th>
-                <th>Quantity</th>
-            </tr>
+        <tr>
+            <th>Dish Name</th>
+            <th>Quantity</th>
+        </tr>
         </thead>
         <tbody>
-            {% for item in grouped_items %}
+        {% for item in grouped_items %}
             <tr>
                 <td>{{ item.dish__name }}</td>
                 <td>{{ item.total_quantity }}</td>
             </tr>
-            {% endfor %}
+        {% endfor %}
         </tbody>
     </table>
-    <br>
-    <p style="text-align: center;"><strong>Total: {{ adjusted_total_price }}</strong></p>
 
-    <!-- Payment Form -->
+    <p class="centered-text"><strong>Total:</strong> {{ adjusted_total_price }}</p>
+
     <form method="post">
         {% csrf_token %}
         <label for="payment-method">Select Payment Method:</label>
@@ -142,52 +148,66 @@
         </select>
         <button type="submit">Pay</button>
     </form>
+    <button onclick="window.print()" style="
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 20px;
+    ">
+        🖨️ Print Receipt
+    </button>
+</div>
 
-    <!-- QR Code Modal -->
-    <div id="qr-modal">
-        <h3>Scan the QR Code</h3>
-        {% load static %}
-        <img src="{% static 'img/icon.png' %}" alt="QR Code">
-        <button id="close-modal">Close</button>
-    </div>
-    <div id="modal-overlay"></div>
+<!-- QR Modal -->
+<div id="qr-modal">
+    <h3>Scan the QR Code</h3>
+    {% load static %}
+    <img src="{% static 'img/qrpay.jpg' %}" alt="QR Code">
+    <br>
+    <button id="close-modal" style="margin-top: 10px; background: #007bff;">Close</button>
+</div>
+<div id="modal-overlay"></div>
 
-    <script>
-        const paymentMethod = document.getElementById('payment-method');
-        const qrModal = document.getElementById('qr-modal');
-        const modalOverlay = document.getElementById('modal-overlay');
-        const paymentForm = document.querySelector('form');
-        const closeModalBtn = document.getElementById('close-modal');
-    
-        let qrSelected = false;  // Track if QR Code was selected
-    
-        // Show modal when QR Code is selected
-        paymentMethod.addEventListener('change', function () {
-            if (this.value === 'QR Code') {
-                qrModal.style.display = 'block';
-                modalOverlay.style.display = 'block';
-                qrSelected = true;
-            }
-        });
-    
-        // Close modal and submit form
-        closeModalBtn.addEventListener('click', function () {
+<script>
+    const paymentMethod = document.getElementById('payment-method');
+    const qrModal = document.getElementById('qr-modal');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const paymentForm = document.querySelector('form');
+    const closeModalBtn = document.getElementById('close-modal');
+
+    let qrSelected = false;
+
+    paymentMethod.addEventListener('change', function () {
+        if (this.value === 'QR Code') {
+            qrModal.style.display = 'block';
+            modalOverlay.style.display = 'block';
+            qrSelected = true;
+        } else {
+            qrSelected = false;
             qrModal.style.display = 'none';
             modalOverlay.style.display = 'none';
-            if (qrSelected) {
-                paymentForm.submit();  // Submit after modal is closed
-            }
-        });
-    
-        // Prevent immediate form submission when QR Code is selected
-        paymentForm.addEventListener('submit', function (event) {
-            if (paymentMethod.value === 'QR Code' && !qrSelected) {
-                event.preventDefault();  // Stop default submission
-                qrModal.style.display = 'block';
-                modalOverlay.style.display = 'block';
-                qrSelected = true;
-            }
-        });
-    </script>
+        }
+    });
+
+    closeModalBtn.addEventListener('click', function () {
+        qrModal.style.display = 'none';
+        modalOverlay.style.display = 'none';
+        if (qrSelected) {
+            paymentForm.submit();
+        }
+    });
+
+    paymentForm.addEventListener('submit', function (event) {
+        if (paymentMethod.value === 'QR Code' && !qrSelected) {
+            event.preventDefault();
+            qrModal.style.display = 'block';
+            modalOverlay.style.display = 'block';
+            qrSelected = true;
+        }
+    });
+</script>
 </body>
 </html>

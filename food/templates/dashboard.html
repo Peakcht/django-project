@@ -2,17 +2,44 @@
 {% block title %} Dashboard {% endblock %}
 {% block content %}
 <div class="container">
-    <h3 class="mt-4">Dashboard</h3>
+    <h3 class="mt-4"></h3>
+    <!-- 🔵 KPI CARDS SECTION: Add here -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary p-3">
+                <h5>{{ total_revenue|floatformat:2 }} ฿</h5>
+                <small>Total Sales</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success p-3">
+                <h5>{{ most_popular_day }}</h5>
+                <small>Most Popular Day</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning p-3">
+                <h5>{{ most_ordered_dish }}</h5>
+                <small>Most Ordered Dish</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info p-3">
+                <h5>{{ avg_order_value }} ฿</h5>
+                <small>Average Order Value</small>
+            </div>
+        </div>
+    </div>
 
     <!-- Toggle Buttons -->
     <div class="btn-group mb-3" role="group">
-        <button id="btn-sales" class="btn btn-primary">Sales Report</button>
-        <button id="btn-invoice" class="btn btn-secondary">Invoice Report</button>
+        <button id="btn-sales" class="btn btn-primary">Dish Sales</button>
+        <button id="btn-invoice" class="btn btn-secondary">Sales Dashboard</button>
     </div>
 
     <!-- Section 1: Sales Report -->
     <div id="sales-section" class="container">
-        <h3 class="mt-4">Demand Report</h3>
+        <h3 class="mt-4">Dish Sales</h3>
     
         <!-- Filter Section -->
         <div class="row my-3">
@@ -20,6 +47,13 @@
                 <label for="dish-selector">Select Dish:</label>
                 <select id="dish-selector" class="form-control">
                     <option value="all">All Dishes</option>
+                    {% for dish in chart_data.dish_datasets %}
+                        <option value="{{ dish.label }}">{{ dish.label }}</option>
+                    {% endfor %}
+                </select>
+                <label for="vs-dish-selector">Compare With:</label>
+                <select id="vs-dish-selector" class="form-control">
+                    <option value="">None</option>
                     {% for dish in chart_data.dish_datasets %}
                         <option value="{{ dish.label }}">{{ dish.label }}</option>
                     {% endfor %}
@@ -36,12 +70,19 @@
         </div>
     
         <button id="set-filter" class="btn btn-primary mb-3">Set</button>
+        <p id="date-range-label" class="text-muted mt-2 mb-0"></p>
     
         <!-- Sales Chart -->
         <canvas id="salesChart"></canvas>
         
         <!-- Top 5 Dishes Table -->
-        <h3 class="mt-4">Top 5 Best-Selling Dishes</h3>
+        <h3 class="mt-4 d-flex align-items-center">
+            <span id="ranking-title">Top 5 Best-Selling Dishes</span>
+            <select id="rank-selector" class="form-control ml-2" style="width: 150px; margin-left: 10px;">
+                <option value="top">Top 5</option>
+                <option value="bottom">Bottom 5</option>
+            </select>
+        </h3>
         <table class="table table-bordered" id="topDishesTable">
             <thead>
                 <tr>
@@ -59,60 +100,98 @@
     <!-- Section 2: Invoice Report -->
     <div id="invoice-section" class="card mb-4" style="display: none;">
         <div class="card-header">
-            <h4>Invoice Report</h4>
+            <h4>Sales Dashboard</h4>
         </div>
         <div class="card-body">
             <canvas id="invoiceChart"></canvas>
-        </div>
-    </div>
 
-    <!-- Invoice Table -->
-    <div id="invoice-table-section" style="display: none;">
-        <h3 class="mt-4">Invoices</h3>
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Invoice ID</th>
-                    <th>Order ID</th>
-                    <th>Generated Date</th>
-                    <th>Generated Time</th>
-                    <th>Payment Amount</th>
-                    <th>Payment Method</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for invoice in invoices %}
-                <tr>
-                    <td>{{ invoice.invoice_id }}</td>
-                    <td>{{ invoice.order.order_id }}</td>
-                    <td>{{ invoice.generated_at.date }}</td>
-                    <td>{{ invoice.generated_at.time }}</td>
-                    <td>{{ invoice.amount_paid }}</td>
-                    <td>{{ invoice.payment_method }}</td>
-                    <td>{{ invoice.status }}</td>
-                    <td><a href="/receipt_view/{{ invoice.invoice_id }}" class="btn btn-link">View Receipt</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            <!-- Invoice Filter -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="invoice-filter-type">Filter by:</label>
+                    <select id="invoice-filter-type" class="form-control">
+                        <option value="all">All</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">This Month</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                <div class="col-md-3 custom-date d-none">
+                    <label for="invoice-start-date">Start Date:</label>
+                    <input type="date" id="invoice-start-date" class="form-control">
+                </div>
+                <div class="col-md-3 custom-date d-none">
+                    <label for="invoice-end-date">End Date:</label>
+                    <input type="date" id="invoice-end-date" class="form-control">
+                </div>
+                <div class="col-md-3 custom-date d-none">
+                    <label>&nbsp;</label>
+                    <button id="apply-invoice-filter" class="btn btn-primary btn-block">Apply</button>
+                </div>
+            </div>
+
+            <!-- ✅ Move this table here -->
+            <h3 class="mt-4">Receipt</h3>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Receipt ID</th>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Amount</th>
+                        <th>Payment Method</th>
+                        <th>Status</th>
+                        <!--<th>Action</th>-->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td>{{ invoice.invoice_number }}</td>
+                        <td>{{ invoice.order.order_number }}</td>
+                        <td>{{ invoice.generated_at.date }}</td>
+                        <td>{{ invoice.generated_at|time:"H:i" }}</td>
+                        <td>{{ invoice.amount_paid }}</td>
+                        <td>{{ invoice.payment_method }}</td>
+                        <td>{{ invoice.status }}</td>
+                        <!--<td><a href="/receipt_view/{{ invoice.invoice_id }}" class="btn btn-link">View Receipt</a></td>-->
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
+<style>
+    .custom-date {
+        margin-top: 30px;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1"></script>
+
+<script>
+    const ChartAnnotation = window['chartjs-plugin-annotation'];
+    Chart.register(ChartAnnotation, ChartDataLabels);
+</script>
 <script>
     // Get elements
     var salesSection = document.getElementById("sales-section");
     var invoiceSection = document.getElementById("invoice-section");
-    var invoiceTable = document.getElementById("invoice-table-section");
     var btnSales = document.getElementById("btn-sales");
     var btnInvoice = document.getElementById("btn-invoice");
+    var invoiceTable = document.getElementById("invoice-table-section");
 
     // Toggle sections
     btnSales.addEventListener("click", function() {
         salesSection.style.display = "block";
         invoiceSection.style.display = "none";
-        invoiceTable.style.display = "none";
         btnSales.classList.add("btn-primary");
         btnSales.classList.remove("btn-secondary");
         btnInvoice.classList.add("btn-secondary");
@@ -122,7 +201,6 @@
     btnInvoice.addEventListener("click", function() {
         salesSection.style.display = "none";
         invoiceSection.style.display = "block";
-        invoiceTable.style.display = "block";
         btnSales.classList.add("btn-secondary");
         btnSales.classList.remove("btn-primary");
         btnInvoice.classList.add("btn-primary");
@@ -132,148 +210,418 @@
     var salesData = {{ chart_data.dish_datasets|safe }};
     var ctx = document.getElementById('salesChart').getContext('2d');
     var chartInstance;
-
+    
+    Chart.register(ChartDataLabels);
     function updateChart() {
+        let selectedDish = document.getElementById("dish-selector").value;
+        let vsDish = document.getElementById("vs-dish-selector").value;
         let startDate = document.getElementById("date-selector").value;
         let endDate = document.getElementById("date-selector-end").value;
-        let selectedDish = document.getElementById("dish-selector").value;
-
-        // Convert input dates to Date objects
         let start = startDate ? new Date(startDate) : null;
         let end = endDate ? new Date(endDate) : null;
 
-        let filteredData;
-        let allDates = [...new Set(salesData.flatMap(dish => dish.dates))].sort();
+        // Prevent comparing the same dish
+        if (selectedDish !== "all" && selectedDish === vsDish) {
+            alert("Please select a different dish to compare with.");
+            return;
+        }
 
-        if (!start && !end && selectedDish === "all") {
-            // **DEFAULT VIEW: Show Total Sales per Dish**
-            let dishTotals = salesData.map(dish => ({
-                label: dish.label,
-                totalSales: dish.data.reduce((a, b) => a + b, 0), // Sum all sales
-                backgroundColor: dish.backgroundColor,
-                borderColor: dish.borderColor
-            }));
+        // Set Date Range Label
+        let dateRangeLabel = document.getElementById("date-range-label");
+        if (startDate && endDate) {
+            dateRangeLabel.textContent = `Showing data from ${startDate} to ${endDate}`;
+        } else if (startDate) {
+            dateRangeLabel.textContent = `Showing data from ${startDate} onward`;
+        } else if (endDate) {
+            dateRangeLabel.textContent = `Showing data until ${endDate}`;
+        } else {
+            dateRangeLabel.textContent = "Showing all-time data";
+        }
 
-            // Sort top 5 dishes by total sales
-            let topDishes = [...dishTotals].sort((a, b) => b.totalSales - a.totalSales).slice(0, 5);
-
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: dishTotals.map(d => d.label), // Dish names
-                    datasets: [{
-                        label: 'Total Sales',
-                        data: dishTotals.map(d => d.totalSales),
-                        backgroundColor: dishTotals.map(d => d.backgroundColor),
-                        borderColor: dishTotals.map(d => d.borderColor),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'Total Sales' } },
-                        x: { title: { display: true, text: 'Dish Name' } }
+        // Filter and aggregate
+        let filteredDataSum = salesData
+            .filter(dish => {
+                if (selectedDish === 'all' && !vsDish) return true;
+                if (selectedDish !== 'all' && vsDish) return dish.label === selectedDish || dish.label === vsDish;
+                if (selectedDish !== 'all') return dish.label === selectedDish;
+                if (vsDish) return dish.label === vsDish;
+                return false;
+            })
+            .map(dish => {
+                if (!dish.dates || !dish.data) return null; // Skip invalid
+                let total = 0;
+                for (let i = 0; i < dish.dates.length; i++) {
+                    let date = new Date(dish.dates[i]);
+                    if ((!start || date >= start) && (!end || date <= end)) {
+                        total += dish.data[i];
                     }
                 }
-            });
+                return {
+                    label: dish.label,
+                    totalSales: total,
+                    backgroundColor: dish.backgroundColor,
+                    borderColor: dish.borderColor
+                };
+            })
+            .filter(Boolean); // Remove nulls
 
-            // Update Top 5 Table
-            updateTopDishesTable(topDishes);
+        if (!filteredDataSum || filteredDataSum.length === 0) {
+            alert("No data available for the selected filters.");
+            return;
+        }
+
+        // Sorting
+        let chartData = filteredDataSum;
+
+        if (selectedDish === 'all' && !vsDish) {
+            const rankType = document.getElementById("rank-selector").value;
+            chartData = [...filteredDataSum].sort((a, b) => b.totalSales - a.totalSales);
+
+            if (rankType === "bottom") {
+                chartData.reverse();
+            }
+
+            chartData = chartData.slice(0, 5);
+        }
+
+        // Destroy old chart safely
+        if (chartInstance && typeof chartInstance.destroy === 'function') {
+            chartInstance.destroy();
+        }
+
+        // Render chart
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartData.map(d => d.label),
+                datasets: [{
+                    label: 'Total Sales',
+                    data: chartData.map(d => d.totalSales),
+                    backgroundColor: chartData.map(d => d.backgroundColor),
+                    borderColor: chartData.map(d => d.borderColor),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    datalabels: {
+                        anchor: 'start',         // anchor at the top of bar
+                        align: 'top',        // align slightly above bar
+                        offset: -10,           // move above bar
+                        clamp: true,
+                        clip: false,
+                        font: {
+                            weight: 'bold',
+                            size: 14
+                        },
+                        color: '#000',         // black label
+                        formatter: value => value
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: value => value >= 1000 ? (value / 1000) + 'K' : value
+                        },
+                        title: {
+                            display: true,
+                            text: 'Total Sales'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Dish Name'
+                        }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        // Top 5 table visibility
+        let topTable = document.getElementById("topDishesTable").parentElement;
+        if (selectedDish === 'all' && !vsDish) {
+            const rankSelector = document.getElementById("rank-selector");
+            const rankType = rankSelector ? rankSelector.value : "top";
+            let rankedDishes = [...filteredDataSum].sort((a, b) => b.totalSales - a.totalSales);
+
+            if (rankType === "bottom") {
+                rankedDishes.reverse();
+            }
+
+            updateTopDishesTable(rankedDishes.slice(0, 5));
+            topTable.style.display = "block";
+
+            // Optional: Update title text dynamically
+            const rankingTitle = document.getElementById("ranking-title");
+            if (rankingTitle) {
+                rankingTitle.textContent = rankType === "top"
+                    ? "Top 5 Best-Selling Dishes"
+                    : "Bottom 5 Least-Selling Dishes";
+            }
 
         } else {
-            // **FILTERED VIEW: Show Sales Per Dish Per Date**
-            if (start || end) {
-                allDates = allDates.filter(date => {
-                    let dishDate = new Date(date);
-                    return (!start || dishDate >= start) && (!end || dishDate <= end);
-                });
-            }
-
-            filteredData = salesData.map(dish => ({
-                label: dish.label,
-                data: allDates.map(date => {
-                    let index = dish.dates.indexOf(date);
-                    return index !== -1 ? dish.data[index] : 0;
-                }),
-                borderColor: dish.borderColor,
-                backgroundColor: dish.backgroundColor,
-                fill: false
-            }));
-
-            // Get total sales per dish (for sorting Top 5)
-            let topDishes = filteredData.map(dish => ({
-                label: dish.label,
-                totalSales: dish.data.reduce((a, b) => a + b, 0),
-            })).sort((a, b) => b.totalSales - a.totalSales).slice(0, 5);
-
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            chartInstance = new Chart(ctx, {
-                type: 'bar', // **Ensure grouped bar chart**
-                data: {
-                    labels: allDates, // Dates on X-axis
-                    datasets: filteredData // Sales data per dish per date
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position: 'top' } },
-                    scales: {
-                        x: { stacked: false, title: { display: true, text: 'Date' } },
-                        y: { stacked: false, beginAtZero: true, title: { display: true, text: 'Sales' } }
-                    }
-                }
-            });
-
-            // Update Top 5 Table
-            updateTopDishesTable(topDishes);
+            topTable.style.display = "none";
         }
-    }
-    //Add Invoice
-    var invoiceCtx = document.getElementById('invoiceChart').getContext('2d');
 
-    var invoiceChart = new Chart(invoiceCtx, {
+        // Delay scroll to ensure rendering finishes
+        setTimeout(() => {
+            document.getElementById("salesChart").scrollIntoView({ behavior: "smooth" });
+        }, 300);
+    }
+
+
+    //Add Invoice
+    const invoiceCtx = document.getElementById('invoiceChart').getContext('2d');
+
+    // Prepare data
+    const invoiceDates = [{% for item in daily_invoice_totals %}'{{ item.date|date:"Y-m-d" }}',{% endfor %}];
+    const invoiceSales = [{% for item in daily_invoice_totals %}{{ item.total_sales }},{% endfor %}];
+
+    const originalInvoiceDates = [...invoiceDates];
+    const originalInvoiceSales = [...invoiceSales];
+
+    // Calculate average
+    const avgSales = invoiceSales.reduce((a, b) => a + b, 0) / invoiceSales.length;
+
+    // Find peak and dip
+    const maxSales = Math.max(...invoiceSales);
+    const minSales = Math.min(...invoiceSales);
+    const maxIndex = invoiceSales.indexOf(maxSales);
+    const minIndex = invoiceSales.indexOf(minSales);
+
+    //
+    const invoiceChart = new Chart(invoiceCtx, {
         type: 'line',
         data: {
-            labels: [{% for item in daily_invoice_totals %}'{{ item.date }}',{% endfor %}],
+            labels: invoiceDates,
             datasets: [{
-                label: 'Total Sales per Day',
-                data: [{% for item in daily_invoice_totals %}{{ item.total_sales }},{% endfor %}],
+                label: '',
+                data: invoiceSales,
                 backgroundColor: '#36a2eb',
                 borderColor: '#36a2eb',
                 fill: false,
                 tension: 0.3,
+                pointRadius: 5,
+                pointHoverRadius: 7,
             }]
         },
         options: {
             responsive: true,
             plugins: {
-                legend: { position: 'top' }
+                legend: {
+                    display: false  // 👈 Optional: hide the whole legend box
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            return `฿${value.toLocaleString()}`;
+                        }
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        avgLine: {
+                            type: 'line',
+                            yMin: avgSales,
+                            yMax: avgSales,
+                            xMin: invoiceDates[0],
+                            xMax: invoiceDates[invoiceDates.length - 1],
+                            borderColor: 'rgba(255,99,132,0.6)',
+                            borderWidth: 2,
+                            label: {
+                                enabled: true,
+                                content: `Avg ฿${Math.round(avgSales).toLocaleString()}`,
+                                position: 'end',
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                color: '#fff',
+                                font: { size: 12, weight: 'bold' },
+                                padding: 6
+                            }
+                        },
+                        peak: {
+                            type: 'point',
+                            xValue: invoiceDates[maxIndex],
+                            yValue: maxSales,
+                            backgroundColor: 'green',
+                            radius: 6,
+                            label: {
+                                enabled: true,
+                                content: `Highest ฿${maxSales.toLocaleString()}`,
+                                position: 'top',
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                color: '#fff',
+                                font: { size: 12, weight: 'bold' },
+                                padding: 6
+                            }
+                        },
+                        dip: {
+                            type: 'point',
+                            xValue: invoiceDates[minIndex],
+                            yValue: minSales,
+                            backgroundColor: 'red',
+                            radius: 6,
+                            label: {
+                                enabled: true,
+                                content: `Lowest ฿${minSales.toLocaleString()}`,
+                                position: 'bottom',
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                color: '#fff',
+                                font: { size: 12, weight: 'bold' },
+                                padding: 6
+                            }
+                        }
+                    }
+                },
+                datalabels: {
+                    display: true,
+                    align: 'top',
+                    formatter: value => '฿' + value.toLocaleString(),
+                    font: {
+                        size: 15,
+                        weight: 'bold'
+                    }
+                }
             },
             scales: {
                 x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        tooltipFormat: 'DD MMM',
+                        displayFormats: {
+                            day: 'DD MMM'  // e.g., '20 Jan'
+                        }
+                    },
                     title: {
                         display: true,
                         text: 'Date'
+                    },
+                    ticks: {
+                        autoSkip: true,            // ✅ Automatically skip ticks
+                        maxTicksLimit: 31,
+                        maxRotation: 45,
+                        minRotation: 45,
                     }
                 },
                 y: {
-                    beginAtZero: true,
                     title: {
                         display: true,
                         text: 'Total Sales (฿)'
+                    },
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value >= 1000 ? (value / 1000) + ' K' : value;
+                        }
                     }
                 }
             }
+        },
+        plugins: [ChartAnnotation, ChartDataLabels]
+    });
+
+    // Filter logic for invoice
+    const invoiceFilterType = document.getElementById("invoice-filter-type");
+    const customDateFields = document.querySelectorAll(".custom-date");
+
+    invoiceFilterType.addEventListener("change", () => {
+        const type = invoiceFilterType.value;
+        customDateFields.forEach(field => {
+            field.classList.toggle("d-none", type !== "custom");
+        });
+        if (type !== "custom") {
+            filterInvoiceData(type);
         }
     });
+
+    document.getElementById("apply-invoice-filter").addEventListener("click", () => {
+        const start = document.getElementById("invoice-start-date").value;
+        const end = document.getElementById("invoice-end-date").value;
+        filterInvoiceData("custom", start, end);
+    });
+
+    function filterInvoiceData(type, startDate = null, endDate = null) {
+        const now = moment();
+
+        const filteredDates = [];
+        const filteredSales = [];
+
+        for (let i = 0; i < originalInvoiceDates.length; i++) {
+            let dateStr = originalInvoiceDates[i];
+            let sales = originalInvoiceSales[i];
+            let currentDate = moment(dateStr, "YYYY-MM-DD");
+
+            let include = false;
+
+            if (type === "all") {
+                include = true;
+            } else if (type === "week") {
+                include = currentDate.isAfter(now.clone().subtract(7, "days"));
+            } else if (type === "month") {
+                include = currentDate.isSame(now, 'month');
+            } else if (type === "custom" && startDate && endDate) {
+                include = currentDate.isBetween(startDate, endDate, undefined, '[]');
+            }
+
+            if (include) {
+                filteredDates.push(dateStr);
+                filteredSales.push(sales);
+            }
+        }
+
+        if (filteredDates.length === 0 || filteredSales.length === 0) {
+            alert("No invoice data found in selected range.");
+            console.warn("No data to show for filter:", type, startDate, endDate);
+            return;
+        }
+
+        // Recalculate chart stats
+        const avgSales = filteredSales.reduce((a, b) => a + b, 0) / filteredSales.length;
+        const maxSales = Math.max(...filteredSales);
+        const minSales = Math.min(...filteredSales);
+        const maxIndex = filteredSales.indexOf(maxSales);
+        const minIndex = filteredSales.indexOf(minSales);
+
+        // Update chart
+        invoiceChart.data.labels = filteredDates;
+        invoiceChart.data.datasets[0].data = filteredSales;
+
+        // Update annotation range and values
+        invoiceChart.options.plugins.annotation.annotations.avgLine.yMin = avgSales;
+        invoiceChart.options.plugins.annotation.annotations.avgLine.yMax = avgSales;
+        invoiceChart.options.plugins.annotation.annotations.avgLine.xMin = filteredDates[0];
+        invoiceChart.options.plugins.annotation.annotations.avgLine.xMax = filteredDates[filteredDates.length - 1];
+        invoiceChart.options.plugins.annotation.annotations.peak.xValue = filteredDates[maxIndex];
+        invoiceChart.options.plugins.annotation.annotations.peak.yValue = maxSales;
+        invoiceChart.options.plugins.annotation.annotations.dip.xValue = filteredDates[minIndex];
+        invoiceChart.options.plugins.annotation.annotations.dip.yValue = minSales;
+
+        // Optional: Add chart title text
+        let titleText = 'Sales Dashboard';
+        if (type === 'week') {
+            titleText = 'Sales Dashboard - Last 7 Days';
+        } else if (type === 'month') {
+            titleText = 'Sales Dashboard - This Month';
+        } else if (type === 'custom' && startDate && endDate) {
+            titleText = `Sales Dashboard - ${moment(startDate).format('DD MMM')} to ${moment(endDate).format('DD MMM')}`;
+        }
+        invoiceChart.options.plugins.title = {
+            display: true,
+            text: titleText,
+            font: { size: 16, weight: 'bold' }
+        };
+
+        invoiceChart.update();
+    }
+
 
     // **Function to Update Top 5 Dishes Table**
     function updateTopDishesTable(topDishes) {
@@ -291,10 +639,37 @@
     }
 
     // Event Listeners
-    document.getElementById("set-filter").addEventListener("click", updateChart);
 
     // Load **default view** on page load
-    updateChart();
-</script>
+    window.addEventListener("DOMContentLoaded", function () {
+        btnSales.click(); // Default to Sales tab
+        filterInvoiceData(invoiceFilterType.value);
 
+        document.getElementById("set-filter").addEventListener("click", () => {
+            console.log("🔵 Set button clicked");
+            salesSection.style.display = "block";
+            invoiceSection.style.display = "none";
+            btnSales.classList.add("btn-primary");
+            btnSales.classList.remove("btn-secondary");
+            btnInvoice.classList.add("btn-secondary");
+            btnInvoice.classList.remove("btn-primary");
+            if (invoiceTable) invoiceTable.style.display = "none";
+
+            updateChart();
+
+            // 🩹 Workaround: toggle canvas to force Chart.js redraw
+            const chartCanvas = document.getElementById("salesChart");
+            chartCanvas.style.display = "none";
+            setTimeout(() => {
+                chartCanvas.style.display = "block";
+                if (chartInstance) chartInstance.resize();
+                chartCanvas.scrollIntoView({ behavior: "smooth" });
+            }, 100);
+        });
+
+        document.getElementById("rank-selector").addEventListener("change", updateChart);
+
+        updateChart();
+    });
+</script>
 {% endblock %}

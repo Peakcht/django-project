@@ -3,19 +3,18 @@
 {% block content %}
 <div class="container mt-4">
     <!-- Header Image & Restaurant Info -->
-    <div class="header">
+    <!--<div class="header">
         {% load static %}
         <img src="{% static 'img/t2.jpg' %}" class="header-image" alt="Restaurant Banner">
+    </div>-->
+    <div class="countdown-timer text-center mt-3">
+        <h5>Time Left: <span id="countdown">--:--</span></h5>
     </div>
-
     <!-- Table Selection -->
     <div class="table-selection">
         <button class="btn btn-light">Order ID: {{ order.order_number }} </button>
         <button class="btn btn-light">Table: {{ order.table.table_number }} </button>
-        <button class="btn btn-light">package: {{ selected_package }} </button>
-    </div>
-    <div class="countdown-timer text-center mt-3">
-        <h5>Time Left: <span id="countdown">--:--</span></h5>
+        <button class="btn btn-light">package: {{ order.total_price }} </button>
     </div>
     <div class="text-center mt-4">
         <a href="{% url 'change_package' order.order_id %}" class="btn btn-outline-primary me-2">
@@ -30,9 +29,14 @@
 
     <!-- Menu Tabs -->
     <ul class="nav nav-tabs">
-        <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#meat">เนื้อสัตว์สไลด์</a></li>
-        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#seafood">ทะเล</a></li>
-        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#vegetables">ผัก</a></li>
+        <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#meat">Meat</a></li>
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#process">Process Food</a></li>
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#seafood">Seafood</a></li>
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tofu">Tofu</a></li>
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#appetizer">Appetizer</a></li>
+        {% if order.selected_package|stringformat:"s" == "379" %}
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#pr">Premium 379</a></li>
+        {% endif %}
     </ul>
 
     <!-- Menu Content -->
@@ -60,11 +64,11 @@
                 {% endfor %}
             </div>
         </div>
-        <!-- Veg -->
-        <div class="tab-pane fade" id="vegetables">
+        <!-- Processed -->
+        <div class="tab-pane fade" id="process">
             <div class="menu-list">
                 {% for dish in dishes %}
-                    {% if dish.type == "veg" %}
+                    {% if dish.type == "pc" %}
                     <div class="menu-item">
                         <img src="/media/{{ dish.image }}" class="menu-image" alt="{{ dish.name }}">
                         <div class="menu-details">
@@ -83,11 +87,11 @@
                 {% endfor %}
             </div>
         </div>
-        <!-- Egg -->
+        <!-- Seafood -->
         <div class="tab-pane fade" id="seafood">
             <div class="menu-list">
                 {% for dish in dishes %}
-                    {% if dish.type == "egg" %}
+                    {% if dish.type == "sea" %}
                     <div class="menu-item">
                         <img src="/media/{{ dish.image }}" class="menu-image" alt="{{ dish.name }}">
                         <div class="menu-details">
@@ -106,6 +110,98 @@
                 {% endfor %}
             </div>
         </div>
+        <!-- Tofu -->
+        <div class="tab-pane fade" id="tofu">
+            <div class="menu-list">
+                {% for dish in dishes %}
+                    {% if dish.type == "tf" %}
+                    <div class="menu-item">
+                        <img src="/media/{{ dish.image }}" class="menu-image" alt="{{ dish.name }}">
+                        <div class="menu-details">
+                            <h5>{{ dish.name }}</h5>
+                            <div style="margin-top: 10px;">
+                                <button id="add-btn-{{ dish.id }}" onclick="addToCart({{ dish.id }}, '{{ dish.name|escapejs }}')">Add to Cart</button>
+                                <div id="quantity-controls-{{ dish.id }}" style="display: none; margin-top: 5px;">
+                                    <button onclick="decrementQuantity({{ dish.id }})">-</button>
+                                    <span id="quantity-{{ dish.id }}">1</span>
+                                    <button onclick="incrementQuantity({{ dish.id }})">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Appetizer -->
+        <div class="tab-pane fade" id="appetizer">
+            <div class="menu-list">
+                {% for dish in dishes %}
+                    {% if dish.type == "app" %}
+                    <div class="menu-item">
+                        <img src="/media/{{ dish.image }}" class="menu-image" alt="{{ dish.name }}">
+                        <div class="menu-details">
+                            <h5>{{ dish.name }}</h5>
+                            <div style="margin-top: 10px;">
+                                <button id="add-btn-{{ dish.id }}" onclick="addToCart({{ dish.id }}, '{{ dish.name|escapejs }}')">Add to Cart</button>
+                                <div id="quantity-controls-{{ dish.id }}" style="display: none; margin-top: 5px;">
+                                    <button onclick="decrementQuantity({{ dish.id }})">-</button>
+                                    <span id="quantity-{{ dish.id }}">1</span>
+                                    <button onclick="incrementQuantity({{ dish.id }})">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <!-- 379 -->
+        <div class="tab-pane fade" id="pr">
+            <div class="menu-list">
+                {% for dish in dishes %}
+                    {% if dish.type == "pr" %}
+                    <div class="menu-item">
+                        <img src="/media/{{ dish.image }}" class="menu-image" alt="{{ dish.name }}">
+                        <div class="menu-details">
+                            <h5>{{ dish.name }}</h5>
+                            <div style="margin-top: 10px;">
+                                <button id="add-btn-{{ dish.id }}" onclick="addToCart({{ dish.id }}, '{{ dish.name|escapejs }}')">Add to Cart</button>
+                                <div id="quantity-controls-{{ dish.id }}" style="display: none; margin-top: 5px;">
+                                    <button onclick="decrementQuantity({{ dish.id }})">-</button>
+                                    <span id="quantity-{{ dish.id }}">1</span>
+                                    <button onclick="incrementQuantity({{ dish.id }})">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Drink -->
+        <!--<div class="tab-pane fade" id="drink">
+            <div class="menu-list">
+                {% for dish in dishes %}
+                    {% if dish.type == "dr" %}
+                    <div class="menu-item">
+                        <img src="/media/{{ dish.image }}" class="menu-image" alt="{{ dish.name }}">
+                        <div class="menu-details">
+                            <h5>{{ dish.name }}</h5>
+                            <div style="margin-top: 10px;">
+                                <button id="add-btn-{{ dish.id }}" onclick="addToCart({{ dish.id }}, '{{ dish.name|escapejs }}')">Add to Cart</button>
+                                <div id="quantity-controls-{{ dish.id }}" style="display: none; margin-top: 5px;">
+                                    <button onclick="decrementQuantity({{ dish.id }})">-</button>
+                                    <span id="quantity-{{ dish.id }}">1</span>
+                                    <button onclick="incrementQuantity({{ dish.id }})">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>-->
     </div>
 </div>
 
@@ -143,23 +239,42 @@
         margin: 15px 0;
     }
     .menu-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-top: 15px;
     }
+
     .menu-item {
-        display: flex;
-        align-items: center;
-        padding: 10px;
-        border-bottom: 1px solid #ddd;
-    }
-    .menu-image {
-        width: 80px;
-        height: 80px;
-        margin-right: 15px;
+        background: #f9f9f9;
         border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
     }
     
+    .menu-image {
+    width: 100%;
+    max-width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    }
+    
+    .menu-details h5 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    }
+
+    .menu-details button {
+        margin-top: 5px;
+    }
+
     li img {
         width: 60px;
         height: 60px;
@@ -333,6 +448,10 @@
 
     /* Responsive Styles */
     @media screen and (max-width: 768px) {
+        .container {
+            padding-bottom: 130px; /* Enough space for mobile cart */
+        }
+        
         #floating-cart {
             top: auto;
             bottom: 0;
@@ -354,6 +473,18 @@
         #cart-items li {
             flex-wrap: wrap;
             text-align: left;
+        }
+        /* Add this part below for mobile menu layout */
+        .menu-list {
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        }
+
+        .menu-item {
+            padding: 8px;
+        }
+
+        .menu-details h5 {
+            font-size: 0.9rem;
         }
     }
 </style>

@@ -4,9 +4,10 @@
 <div class="container mt-4">
     <h2>Submit Transaction Slip</h2>
     <br>
+
     <!-- Search Bar -->
     <form method="GET" class="form-inline mb-3">
-        <input type="text" name="search" class="form-control mr-2" placeholder="Search by Invoice ID or Order ID" value="{{ request.GET.search }}">
+        <input type="text" name="search" class="form-control mr-2" placeholder="Search by Receipt ID or Order ID" value="{{ request.GET.search }}">
         <button type="submit" class="btn btn-outline-primary">Search</button>
         <a href="{% url 'submit_receipt' %}" class="btn btn-outline-secondary ml-2">Reset</a>
     </form>
@@ -15,11 +16,12 @@
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="form-group">
-            <label for="order_id">Select Invoice (Order ID):</label>
+            <label for="order_id">Select Receipt ID:</label>
             <select class="form-control" id="order_id" name="order_id" required>
                 {% for invoice in invoices %}
-                    <option value="{{ invoice.order.order_id }}">
-                        Order #{{ invoice.order.order_number }} — Invoice #{{ invoice.invoice_number }}
+                    <option value="{{ invoice.order.order_id }}"
+                            data-payment="{{ invoice.payment_method }}">
+                        Receipt #{{ invoice.invoice_number }} ({{ invoice.payment_method }})
                     </option>
                 {% endfor %}
             </select>
@@ -30,7 +32,35 @@
             <input type="file" class="form-control-file" name="transaction_image" accept="image/*" required>
         </div>
 
+        <div class="form-group" id="reference_group" style="display: none;">
+            <label for="reference_code">Transaction Reference Code:</label>
+            <input type="text" class="form-control" name="reference_code" id="reference_code" placeholder="e.g. ABC123XYZ">
+        </div>
+
         <button type="submit" class="btn btn-outline-success">Add Slip</button>
     </form>
+    <br>
+    <a href="{% url 'checkout_list' %}" class="btn btn-outline-success">Checkout List</a>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const orderSelect = document.getElementById('order_id');
+        const refGroup = document.getElementById('reference_group');
+
+        function toggleRefCode() {
+            const selectedOption = orderSelect.options[orderSelect.selectedIndex];
+            const paymentMethod = selectedOption.getAttribute('data-payment');
+
+            if (paymentMethod === 'QR Code') {
+                refGroup.style.display = 'block';
+            } else {
+                refGroup.style.display = 'none';
+            }
+        }
+
+        toggleRefCode(); // Initial
+        orderSelect.addEventListener('change', toggleRefCode);
+    });
+</script>
 {% endblock %}

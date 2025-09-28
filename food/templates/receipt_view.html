@@ -2,15 +2,15 @@
 {% block title %}Receipt{% endblock %}
 {% block content %}
 <div class="container mt-4">
-    <h3>Receipt for Order {{ invoice.order.order_id }}</h3>
+    <h3>Receipt for Order {{ invoice.order.order_number }}</h3>
     <table class="table table-bordered">
         <tr>
-            <th>Invoice ID</th>
-            <td>{{ invoice.invoice_id }}</td>
+            <th>Receipt ID</th>
+            <td>{{ invoice.invoice_number }}</td>
         </tr>
         <tr>
             <th>Order ID</th>
-            <td>{{ invoice.order.order_id }}</td>
+            <td>{{ invoice.order.order_number }}</td>
         </tr>
         <tr>
             <th>Amount Paid</th>
@@ -20,6 +20,12 @@
             <th>Payment Method</th>
             <td>{{ invoice.payment_method }}</td>
         </tr>
+        {% if invoice.payment_method == "QR Code" and invoice.reference_code %}
+        <tr>
+            <th>Reference Code</th>
+            <td>{{ invoice.reference_code }}</td>
+        </tr>
+        {% endif %}
         <tr>
             <th>Status</th>
             <td>{{ invoice.status }}</td>

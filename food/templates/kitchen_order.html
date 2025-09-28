@@ -31,17 +31,23 @@
                                 <td>x{{ item.quantity }}</td>
                                 <td><span class="badge bg-secondary">{{ item.status }}</span></td>
                                 <td>
-                                    <form method="post" class="d-flex gap-2 flex-wrap">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="order_id" value="{{ order.order_id }}">
-                                        <input type="hidden" name="item_id" value="{{ item.id }}">
-                                        <select name="new_status" class="form-select form-select-sm" style="min-width: 160px;">
-                                            <option value="Cooking" {% if item.status == "Cooking" %}selected{% endif %}>Cooking</option>
-                                            <option value="Ready to Serve" {% if item.status == "Ready to Serve" %}selected{% endif %}>Ready to Serve</option>
-                                            <option value="Cancelled" {% if item.status == "Cancelled" %}selected{% endif %}>Cancelled</option>
-                                        </select>
-                                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
-                                    </form>
+                                    <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap">
+                                        <form method="post">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="order_id" value="{{ order.order_id }}">
+                                            <input type="hidden" name="item_id" value="{{ item.id }}">
+                                            <input type="hidden" name="new_status" value="Ready to Serve">
+                                            <button type="submit" class="btn btn-sm btn-warning mx-1">Ready to Serve</button>
+                                        </form>
+                                
+                                        <form method="post" onsubmit="return confirm('Cancel this item?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="order_id" value="{{ order.order_id }}">
+                                            <input type="hidden" name="item_id" value="{{ item.id }}">
+                                            <input type="hidden" name="new_status" value="Cancelled">
+                                            <button type="submit" class="btn btn-sm btn-danger mx-1">Cancel</button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                             {% endif %}
@@ -96,9 +102,8 @@
                 <input type="hidden" name="order_id" value="{{ order.order_id }}">
                 <label class="fw-bold">Update All Items:</label>
                 <select name="new_status" class="form-select form-select-sm" style="min-width: 160px;">
-                    <option value="Cooking">Cooking</option>
                     <option value="Ready to Serve">Ready to Serve</option>
-                    <option value="Cancelled">Cancelled</option>
+                    <!--<option value="Cancelled">Cancel</option>-->
                 </select>
                 <button type="submit" class="btn btn-sm btn-success">Update All</button>
             </form>

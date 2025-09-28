@@ -1,33 +1,62 @@
 {% extends 'base.html' %}
-{% block title %}Invoice List{% endblock %}
+{% block title %}Receipt List{% endblock %}
 {% block content %}
-<div class="container mt-4">
-    <h3>Invoice List</h3>
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>Invoice ID</th>
-                <th>Order ID</th>
-                <th>Amount Paid</th>
-                <th>Status</th>
-                <th>Generated At</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for invoice in invoices %}
-            <tr>
-                <td>{{ invoice.invoice_id }}</td>
-                <td>{{ invoice.order.order_id }}</td>
-                <td>{{ invoice.amount_paid }} ฿</td>
-                <td>{{ invoice.status }}</td>
-                <td>{{ invoice.generated_at }}</td>
-                <td>
-                    <a href="{% url 'receipt_view' invoice.invoice_id %}" class="btn btn-sm btn-primary">View Receipt</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="container mt-5">
+    <h2 class="mb-4">🧾 Receipt List</h2>
+    <div class="table-responsive shadow rounded">
+        <table class="table table-bordered table-hover bg-white">
+            <thead class="thead-light">
+                <tr>
+                    <th scope="col">Receipt ID</th>
+                    <th scope="col">Amount Paid</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Payment Method</th>
+                    <th scope="col">Generated At</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                <tr>
+                    <td>{{ invoice.invoice_number }}</td>
+                    <td><strong>{{ invoice.amount_paid }} ฿</strong></td>
+                    <td>
+                        {% if invoice.status == "Paid" %}
+                            <span class="badge badge-success">{{ invoice.status }}</span>
+                        {% elif invoice.status == "Pending" %}
+                            <span class="badge badge-warning text-dark">{{ invoice.status }}</span>
+                        {% else %}
+                            <span class="badge badge-danger">{{ invoice.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if invoice.payment_method == "QR Code" %}
+                            <span class="badge badge-info">QR Code</span>
+                        {% elif invoice.payment_method == "Cash" %}
+                            <span class="badge badge-secondary">Cash</span>
+                        {% else %}
+                            <span class="badge badge-light">{{ invoice.payment_method }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ invoice.generated_at|date:"Y-m-d H:i" }}</td>
+		    <td>
+                        <div class="d-flex mr-auto">
+                          <a href="{% url 'receipt_view' invoice.invoice_id %}" class="btn btn-sm btn-outline-primary mr-2">
+                            View
+                          </a>
+                          <a href="{% url 'submit_receipt' %}" class="btn btn-sm btn-outline-success">
+                            Submit Payment Slip
+                          </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No receipts found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
