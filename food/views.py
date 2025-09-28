@@ -8,26 +8,26 @@ from math import ceil
 from .models import Table, Dish, Order, OrderItem, Invoice
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q, Count, Prefetch, Sum
+from django.db.models import Q, Count, Prefetch, Sum, Avg
+from django.db.models.functions import ExtractWeekDay
+from calendar import day_name
+from collections import Counter
+import calendar
 from django.db.models.functions import TruncMonth
 from django.urls import reverse
 from django.conf import settings
 from collections import defaultdict
 from django.db.models.functions import TruncDate
 from django.utils import timezone
-
+from django.contrib.auth.decorators import login_required
 
 # Create your views here.
-
-#def order_status(request, order_id):
-    #order = get_object_or_404(Order, order_id=order_id)
-    #return render(request, 'order_status.html', {'order': order})
 
 def order_status(request, order_id):
     order = get_object_or_404(Order, order_id=order_id)
     order_items = order.items.all().order_by('updated_at')  # Orders items in sequence
 
-    return render(request, 'order_status.html', {'order': order, 'order_items': order_items})
+    return render(request, 'order_status.html', {'order': order, 'order_items': order_items, 'hide_home': True,})
 
 
 def order(request):
@@ -38,6 +38,7 @@ def order(request):
         'dishes': dishes
     })
 
+@login_required
 def homepage(request):
     error = None
     qr_image_path = None
@@ -46,6 +47,7 @@ def homepage(request):
     start_time = None
     end_time = None
     selected_package = None
+    order = None  # <- Add this
 
     if request.method == 'POST':
         num_customers = request.POST.get('num_customers')
@@ -75,7 +77,8 @@ def homepage(request):
                 # ✅ Pass request into QR generator
                 qr_image_path = generate_qr_image(request, group_order_id)
 
-                Order.objects.create(
+                # ✅ Store order object in variable
+                order = Order.objects.create(
                     table=table_to_assign,
                     order_id=group_order_id,
                     total_price=int(selected_package),
@@ -87,6 +90,7 @@ def homepage(request):
 
     else:
         selected_package = request.session.get('selected_package')
+        num_customers = None  # <- Ensure defined in GET path too
 
     return render(request, 'homepage.html', {
         'error': error,
@@ -96,8 +100,9 @@ def homepage(request):
         'table': table_to_assign,
         'start_time': start_time,
         'end_time': end_time,
+        'order_number': order.order_number if order else None,  # <- Use order here
+        'num_customers': num_customers,
     })
-
 
 def generate_qr_image(request, group_order_id):
     # Build the full URL using the real host from the request
@@ -139,7 +144,9 @@ def order_page(request, order_id):
         'dishes': dishes,
         'selected_package': selected_package,
         'end_time': order.end_time,
+	'hide_home': True,
     })
+
 
 #Try for Update All
 def waiter_order(request):
@@ -207,81 +214,23 @@ def waiter_order(request):
     return render(request, 'waiter_order.html', {'orders': orders})
 
 
-#1def kitchen_orders(request):
-    # Retrieve orders containing items that are not 'Finished' or 'Cancelled'
-    orders = Order.objects.prefetch_related(
-        Prefetch(
-            'items',
-            queryset=OrderItem.objects.filter(status__in=['Pending', 'Cooking', 'Ready to Serve'])
-        )
-    ).filter(
-        items__status__in=['Pending', 'Cooking', 'Ready to Serve']
-    ).distinct().order_by('table__table_number')
-
-    if request.method == 'POST':
-        order_id = request.POST.get('order_id')
-        new_status = request.POST.get('new_status')
-
-        if 'item_id' in request.POST:
-            # Update a specific item
-            item_id = request.POST.get('item_id')
-            order_item = get_object_or_404(OrderItem, id=item_id, order__order_id=order_id)
-            order_item.status = new_status
-            order_item.save()
-        else:
-            # Update all items in the order
-            order = get_object_or_404(Order, order_id=order_id)
-            order.items.filter(status__in=['Pending', 'Cooking', 'Ready to Serve']).update(status=new_status)
-
-        return redirect('kitchen_orders')
-
-    return render(request, 'kitchen_orders.html', {'orders': orders})
-
-#2def kitchen_orders(request):
-    # Retrieve orders that have at least one item in 'Pending' or 'Cooking'
-    orders = Order.objects.prefetch_related(
-        Prefetch(
-            'items',
-            queryset=OrderItem.objects.filter(status__in=['Pending', 'Cooking'])
-        )
-    ).filter(
-        items__status__in=['Pending', 'Cooking']
-    ).distinct().order_by('table__table_number')
-
-    if request.method == 'POST':
-        order_id = request.POST.get('order_id')
-        new_status = request.POST.get('new_status')
-
-        if 'item_id' in request.POST:
-            item_id = request.POST.get('item_id')
-            order_item = get_object_or_404(OrderItem, id=item_id, order__order_id=order_id)
-
-            # Kitchen can only update statuses within the kitchen workflow
-            if order_item.status in ['Pending', 'Cooking'] and new_status in ['Cooking', 'Ready to Serve']:
-                order_item.status = new_status
-                order_item.save()
-
-            # Check if all items in the order are now 'Ready to Serve'
-            order = order_item.order
-            if not order.items.exclude(status='Ready to Serve').exists():
-                order.status = "Pending"
-                order.save()
-
-        return redirect('kitchen_orders')
-
-    return render(request, 'kitchen_orders.html', {'orders': orders})
-
 def kitchen_order(request):
-    # Retrieve orders that have at least one item in 'Pending', 'Cooking', or 'Cancelled'
+    # Step 1: Convert all 'Pending' items to 'Cooking' before rendering
+    pending_items = OrderItem.objects.filter(status='Pending')
+    for item in pending_items:
+        item.status = 'Cooking'
+        item.save()
+
+    # Step 2: Query only orders that have 'Cooking' or 'Cancelled' items
+    items_qs = OrderItem.objects.filter(status__in=['Cooking', 'Cancelled'])
+
     orders = Order.objects.prefetch_related(
-        Prefetch(
-            'items',
-            queryset=OrderItem.objects.filter(status__in=['Pending', 'Cooking', 'Cancelled'])
-        )
+        Prefetch('items', queryset=items_qs)
     ).filter(
-        items__status__in=['Pending', 'Cooking', 'Cancelled']
+        items__status__in=['Cooking', 'Cancelled']
     ).distinct().order_by('table__table_number')
 
+    # Step 3: Handle POST requests (same as you already have)
     if request.method == 'POST':
         order_id = request.POST.get('order_id')
         new_status = request.POST.get('new_status')
@@ -290,7 +239,7 @@ def kitchen_order(request):
             item_id = request.POST.get('item_id')
             order_item = get_object_or_404(OrderItem, id=item_id, order__order_id=order_id)
 
-            if order_item.status in ['Pending', 'Cooking'] and new_status in ['Cooking', 'Ready to Serve', 'Cancelled']:
+            if order_item.status in ['Cooking'] and new_status in ['Cooking', 'Ready to Serve', 'Cancelled']:
                 order_item.status = new_status
                 order_item.save()
 
@@ -307,7 +256,7 @@ def kitchen_order(request):
 
         else:
             order = get_object_or_404(Order, order_id=order_id)
-            for item in order.items.filter(status__in=['Pending', 'Cooking']):
+            for item in order.items.filter(status='Cooking'):
                 item.status = new_status
                 item.save()
 
@@ -317,10 +266,7 @@ def kitchen_order(request):
 
         return redirect('kitchen_order')
 
-
     return render(request, 'kitchen_order.html', {'orders': orders})
-
-
 
 def submit_order(request, order_id):
     order = get_object_or_404(Order, order_id=order_id)
@@ -338,7 +284,7 @@ def submit_order(request, order_id):
         submitted_items = []
         for item in items:
             try:
-                dish = Dish.objects.get(id=item['dishId'], category=request.session.get('selected_package'))
+                dish = Dish.objects.get(id=item['dishId'], category=order.selected_package)
                 existing_item = OrderItem.objects.filter(order=order, dish=dish, status='Cancelled').first()
                 if existing_item:
                     existing_item.status = OrderItem.PENDING
@@ -358,15 +304,16 @@ def submit_order(request, order_id):
             except Dish.DoesNotExist:
                 return JsonResponse({'success': False, 'error': f"Dish with ID {item['dishId']} not found."}, status=400)
 
+
         return JsonResponse({'success': True, 'order_id': order.order_id})
 
     submitted_items = order.items.filter(status=OrderItem.PENDING)
     return render(request, 'submit_order.html', {
         'order': order,
         'order_id': order_id,
-        'submitted_items': submitted_items
+        'submitted_items': submitted_items,
+	'hide_home': True,
     })
-
 
 def change_package(request, order_id):
     error = None
@@ -384,9 +331,11 @@ def change_package(request, order_id):
         elif package_price not in valid_packages:
             error = "Invalid package selected. Please try again."
         else:
-            # Update session and order details with the new package
             request.session['selected_package'] = package_price
             order.total_price = int(package_price)
+            order.selected_package = package_price  # ✅ fix here
+            order.save()
+            return redirect('order_page', order_id=order.order_id)
 
             # Optionally clear current order items if the package changes dish options
             #order.items.all().delete()  # Optional, based on business logic
@@ -401,8 +350,8 @@ def change_package(request, order_id):
         'error': error,
         'selected_package': request.session.get('selected_package', None),
         'order': order,
+	'hide_home': True,
     })
-
 
 def checkout_list(request):
     """ Show all active orders with table numbers for staff to select """
@@ -415,8 +364,8 @@ def checkout(request, order_id):
 
     # Group items by dish name and sum their quantities
     grouped_items = (
-        order.items.values('dish__name', 'dish__price')  # Group by dish name and price
-        .annotate(total_quantity=Sum('quantity'))        # Sum up the quantities
+        order.items.values('dish__name', 'dish__price')
+        .annotate(total_quantity=Sum('quantity'))
     )
 
     # Calculate adjusted total price
@@ -424,24 +373,24 @@ def checkout(request, order_id):
 
     if request.method == 'POST':
         payment_method = request.POST.get('payment_method')
-        amount_paid = adjusted_total_price  # Use adjusted total price for payment
+        amount_paid = adjusted_total_price
 
-        # Create an invoice for both QR Code and Cash
+        status = 'Paid' if payment_method == 'Cash' else 'Pending'
+        
+        # Create invoice with Pending status
         invoice = Invoice.objects.create(
             order=order,
             payment_method=payment_method,
             amount_paid=amount_paid,
-            status='Paid',
-            selected_package=order.selected_package  # Pass selected package
+            status=status,
+            selected_package=order.selected_package
         )
 
-        # Update order status
         order.status = 'Finished'
-        order.table.is_occupied = False  # Free up the table
+        order.table.is_occupied = False
         order.table.save()
         order.save()
 
-        # Redirect after successful payment
         return redirect('checkout_list')
 
     return render(request, 'checkout.html', {
@@ -449,7 +398,6 @@ def checkout(request, order_id):
         'grouped_items': grouped_items,
         'adjusted_total_price': adjusted_total_price
     })
-
 
 def receipt(request, order_id):
     order = get_object_or_404(Order, order_id=order_id)
@@ -483,19 +431,25 @@ def receipt(request, order_id):
 
 def submit_receipt(request):
     search_query = request.GET.get('search')
-    invoices = Invoice.objects.select_related('order')
+    
+    # Exclude paid invoices from the start
+    invoices = Invoice.objects.select_related('order').exclude(status='Paid')
 
     if search_query:
         invoices = invoices.filter(
-            Q(invoice_id__icontains=search_query) |
-            Q(order__order_id__icontains=search_query)
+            Q(invoice_number__icontains=search_query)
         )
 
     if request.method == 'POST':
         order_id = request.POST.get('order_id')
         transaction_image = request.FILES.get('transaction_image')
+        reference_code = request.POST.get('reference_code')
 
         invoice = get_object_or_404(Invoice, order__order_id=order_id)
+
+        if invoice.payment_method == "QR Code":
+            invoice.reference_code = reference_code
+
         invoice.transaction_image = transaction_image
         invoice.status = Invoice.PAID
         invoice.save()
@@ -512,108 +466,119 @@ def invoice_list_view(request):
     invoices = Invoice.objects.all().order_by('-generated_at')  # Sort newest first
     return render(request, 'invoice_list.html', {'invoices': invoices})
 
-def dashboard(request): 
-    """ Dashboard view with total sales (default) and date-filtered sales """
-
-    # Get date parameters from request
-    start_date = request.GET.get('start_date', None)
-    end_date = request.GET.get('end_date', None)
+def dashboard(request):
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
 
     order_items = OrderItem.objects.select_related('order').all()
+    invoices = Invoice.objects.select_related('order').filter(status=Invoice.PAID)
 
-    # Apply date filtering if selected
     try:
         if start_date and end_date:
             start_dt = datetime.strptime(start_date, "%Y-%m-%d")
             end_dt = datetime.strptime(end_date, "%Y-%m-%d")
             order_items = order_items.filter(order__created_time__date__range=[start_dt, end_dt])
+            invoices = invoices.filter(generated_at__date__range=[start_dt, end_dt])
     except ValueError:
-        start_date, end_date = None, None  # Reset to prevent errors
+        start_date, end_date = None, None
 
-    # Query for total sales per dish (default view)
+    # Total sales (for summary or top 5)
     total_sales_data = (
         order_items.values('dish__name')
         .annotate(total_quantity=Sum('quantity'))
-        .order_by('-total_quantity')  
+        .order_by('-total_quantity')
     )
 
-    # Query for sales per dish per date (filtered view)
+    total_sales = {
+        item["dish__name"]: item["total_quantity"]
+        for item in total_sales_data
+    }
+
+    # Per-day dish sales data
     grouped_data = (
         order_items.values('dish__name', 'order__created_time__date')
         .annotate(total_quantity=Sum('quantity'))
-        .order_by('order__created_time__date')  
+        .order_by('order__created_time__date')
     )
 
-    # Convert total sales to Chart.js format
-    total_sales = {}
-    for item in total_sales_data:
-        dish_name = item["dish__name"]
-        total_sales[dish_name] = item["total_quantity"]
-
-    # Convert date-based sales to Chart.js format
     dish_datasets = {}
     all_dates = set()
 
     for item in grouped_data:
-        dish_name = item["dish__name"]
+        name = item["dish__name"]
         date = item["order__created_time__date"].strftime("%Y-%m-%d")
-        quantity = item["total_quantity"]
+        qty = item["total_quantity"]
         all_dates.add(date)
 
-        if dish_name not in dish_datasets:
-            dish_datasets[dish_name] = {
-                "label": dish_name,
-                "data": [],
-                "dates": [],
-                "backgroundColor": "",
-                "borderColor": ""
+        if name not in dish_datasets:
+            dish_datasets[name] = {
+                "label": name,
+                "by_date": {}
             }
 
-        dish_datasets[dish_name]["data"].append(quantity)
-        dish_datasets[dish_name]["dates"].append(date)
+        dish_datasets[name]["by_date"][date] = qty
 
-    # Ensure all dishes align with full date list
     all_dates = sorted(all_dates)
-    for dish in dish_datasets.values():
-        new_data = []
-        for date in all_dates:
-            if date in dish["dates"]:
-                index = dish["dates"].index(date)
-                new_data.append(dish["data"][index])
-            else:
-                new_data.append(0)  # Fill missing dates with 0
-        dish["data"] = new_data
-        dish["dates"] = list(all_dates)
-
-    # Assign colors
     colors = ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40']
-    dish_chart_data = []
-    color_index = 0
-    for dish in dish_datasets.values():
-        dish["backgroundColor"] = colors[color_index % len(colors)]
-        dish["borderColor"] = colors[color_index % len(colors)]
-        dish_chart_data.append(dish)
-        color_index += 1
+    final_chart_data = []
 
-    # Fetch invoice data
-    invoices = Invoice.objects.select_related('order').all()
-    
+    for i, dish in enumerate(dish_datasets.values()):
+        aligned_data = [dish["by_date"].get(date, 0) for date in all_dates]
+        final_chart_data.append({
+            "label": dish["label"],
+            "data": aligned_data,
+            "dates": list(all_dates),
+            "backgroundColor": colors[i % len(colors)],
+            "borderColor": colors[i % len(colors)],
+        })
+
+    # Daily invoice totals (for chart)
     daily_invoice_totals = (
-    Invoice.objects
-    .filter(status=Invoice.PAID)  # Only count paid invoices
-    .annotate(date=TruncDate('generated_at'))
-    .values('date')
-    .annotate(total_sales=Sum('amount_paid'))
-    .order_by('date')
+        invoices
+        .annotate(date=TruncDate('generated_at'))
+        .values('date')
+        .annotate(total_sales=Sum('amount_paid'))
+        .order_by('date')
     )
-    
+
+    # =========================
+    # ✅ KPI CALCULATIONS
+    # =========================
+
+    # 1. Total Revenue
+    total_revenue = invoices.aggregate(total=Sum('amount_paid'))['total'] or 0
+
+    # 2. Most Popular Day
+    popular_day_data = (
+        invoices
+        .annotate(day_of_week=TruncDate('generated_at'))
+        .values('day_of_week')
+        .annotate(total=Sum('amount_paid'))
+        .order_by('-total')
+        .first()
+    )
+    most_popular_day = popular_day_data['day_of_week'].strftime("%A") if popular_day_data else "N/A"
+
+    # 3. Most Ordered Dish
+    most_ordered_dish = total_sales_data[0]['dish__name'] if total_sales_data else "N/A"
+
+    # 4. Average Order Value
+    avg_order_value = invoices.aggregate(avg=Avg('amount_paid'))['avg'] or 0
+
+    # Context
     context = {
-    "chart_data": {"dish_datasets": dish_chart_data},
-    "total_sales": total_sales,
-    "invoices": invoices,
-    "daily_invoice_totals": list(daily_invoice_totals),
-    "selected_start_date": start_date,
-    "selected_end_date": end_date,
+        "chart_data": {"dish_datasets": final_chart_data},
+        "total_sales": total_sales,
+        "invoices": invoices,
+        "daily_invoice_totals": list(daily_invoice_totals),
+        "selected_start_date": start_date,
+        "selected_end_date": end_date,
+
+        # 🔵 KPI context
+        "total_revenue": round(total_revenue, 2),
+        "most_popular_day": most_popular_day,
+        "most_ordered_dish": most_ordered_dish,
+        "avg_order_value": round(avg_order_value, 2),
     }
-    
+
     return render(request, 'dashboard.html', context)
